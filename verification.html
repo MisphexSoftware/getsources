@@ -1,0 +1,328 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Verification</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #0a0e27;
+            min-height: 100vh;
+            display: grid;
+            place-content: center;
+            color: #e1e8ed;
+            overflow: hidden;
+            position: relative;
+        }
+
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            will-change: transform;
+        }
+
+        .container {
+            background: rgba(15, 19, 35, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(88, 101, 242, 0.15);
+            border-radius: 12px;
+            padding: 3rem;
+            max-width: 420px;
+            width: 90%;
+            animation: fadeInScale 0.6s ease-out;
+            position: relative;
+            z-index: 10;
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #e1e8ed, #5865f2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        p {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: #a0aec0;
+            margin-bottom: 1.5rem;
+        }
+
+        .tos {
+            font-size: 0.85rem;
+            color: #7a8699;
+            margin: 1.5rem 0;
+        }
+
+        .tos a {
+            color: #5865f2;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .tos a:hover {
+            color: #6b76f0;
+        }
+
+        .button {
+            display: inline-block;
+            width: 100%;
+            padding: 0.875rem 1.5rem;
+            margin-top: 1rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: white;
+            background: linear-gradient(135deg, #5865f2 0%, #4752c4 100%);
+            border: none;
+            border-radius: 8px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            transition: left 0.3s ease;
+        }
+
+        .button:hover::before {
+            left: 100%;
+        }
+
+        .button:hover:not(.disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(88, 101, 242, 0.4);
+        }
+
+        .button:active:not(.disabled) {
+            transform: translateY(0);
+        }
+
+        .button.disabled {
+            background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .error-message {
+            color: #f56565;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: rgba(245, 101, 101, 0.1);
+            border-radius: 6px;
+            border-left: 3px solid #f56565;
+            animation: slideInDown 0.3s ease-out;
+        }
+
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #statusText {
+            transition: opacity 0.3s ease;
+        }
+
+        #statusText.hidden {
+            display: none;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 2rem;
+                margin: 1rem;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            p {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="particleCanvas"></canvas>
+    
+    <div class="container">
+        <h1>Server Verification</h1>
+        <p id="statusText">To gain access, you must verify with Discord.</p>
+        <p class="tos">
+            Please read our <a href="/TOS.html" target="_blank" rel="noopener noreferrer">Terms of Service</a> before proceeding.
+        </p>
+        <button id="startVerification" class="button">Start Verification</button>
+        <p id="errorMessage" class="error-message" style="display: none;"></p>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d', { alpha: true });
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const particles = [];
+        const particleCount = Math.min(50, Math.floor(canvas.width / 10));
+        let animationId;
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 1.5 + 0.5;
+                this.speedX = (Math.random() - 0.5) * 0.5;
+                this.speedY = (Math.random() - 0.5) * 0.5;
+                this.opacity = Math.random() * 0.5 + 0.2;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                if (this.x > canvas.width) this.x = 0;
+                else if (this.x < 0) this.x = canvas.width;
+
+                if (this.y > canvas.height) this.y = 0;
+                else if (this.y < 0) this.y = canvas.height;
+            }
+
+            draw() {
+                ctx.fillStyle = `rgba(88, 101, 242, ${this.opacity})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles.length = 0;
+            for (let i = 0; i < particleCount; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function drawLines() {
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < 150) {
+                        ctx.strokeStyle = `rgba(88, 101, 242, ${0.1 * (1 - distance / 150)})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function animate() {
+            ctx.fillStyle = '#0a0e27';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            particles.forEach(particle => {
+                particle.update();
+                particle.draw();
+            });
+
+            drawLines();
+            animationId = requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        initParticles();
+        animate();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const startButton = document.getElementById('startVerification');
+            const statusText = document.getElementById('statusText');
+            const errorMessage = document.getElementById('errorMessage');
+
+            function showError(message) {
+                startButton.textContent = 'Verification Failed';
+                startButton.classList.add('disabled');
+                errorMessage.textContent = message;
+                errorMessage.style.display = 'block';
+                statusText.classList.add('hidden');
+            }
+
+            startButton.addEventListener('click', async () => {
+                startButton.disabled = true;
+                startButton.classList.add('disabled');
+                startButton.textContent = 'Checking Connection...';
+
+                try {
+                    const vpnResponse = await fetch('/api/vpn-check', { method: 'POST' });
+                    const vpnResult = await vpnResponse.json();
+                    
+                    if (!vpnResponse.ok) {
+                        throw new Error(vpnResult.message || 'Connection check failed.');
+                    }
+
+                    const { sessionToken } = vpnResult;
+                    if (!sessionToken || typeof sessionToken !== 'string' || sessionToken.length === 0) {
+                        throw new Error('Could not retrieve a valid session token. Please refresh the page.');
+                    }
+
+                    window.location.href = `/server-selection.html?token=${sessionToken}`;
+                } catch (error) {
+                    console.error('Verification initialization failed:', error);
+                    showError(error.message);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
